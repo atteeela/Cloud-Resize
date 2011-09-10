@@ -12,6 +12,7 @@ class Config():
     self.config.get("AWS", "SECRETKEY")
     self.config.get("AWS", "QUEUE")
     self.config.get("AWS", "BUCKET")
+    self.config.get("AWS", "DBDOMAIN")
     
   def get ( self, section, key ):
     return self.config.get(section, key)

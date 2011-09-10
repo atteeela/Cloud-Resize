@@ -1,18 +1,33 @@
 #! /usr/bin/python
 
-import os,sys, base64
+import os,sys, base64, uuid
 from bootstrap import Bootstrap
 from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
+from boto.sdb.connection import SDBConnection
 
 global configuration
 configuration = Bootstrap.bootstrap()
 
 if configuration:
-  sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
-  #queue = sqsconn.get_queue(configuration.get('AWS', 'QUEUE'))
-  #queue.delete()
-  sqsconn.create_queue(configuration.get('AWS', 'QUEUE'), 120)
-  
-  s3conn = S3Connection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
-  bucket = s3conn.create_bucket( configuration.get('AWS', 'BUCKET') )
+
+  sdbconn = SDBConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+  if len(sys.argv) > 1 and sys.argv[1] == "AddProfile":
+    result = sdbconn.put_attributes(configuration.get('AWS', 'DBDOMAIN'), uuid.uuid1(), {'width' : sys.argv[3], 
+									       'height' : sys.argv[4], 
+									       'aspect' : True,
+									       'profile' : sys.argv[2],
+									       'type' : sys.argv[5]})
+    print "Added profile"
+  else:
+    print "Creating entries"
+    sdbconn.delete_domain(configuration.get('AWS', 'DBDOMAIN'))
+    sdbconn.create_domain(configuration.get('AWS', 'DBDOMAIN'))
+    
+    sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+    #queue = sqsconn.get_queue(configuration.get('AWS', 'QUEUE'))
+    #queue.delete()
+    sqsconn.create_queue(configuration.get('AWS', 'QUEUE'), 120)
+    
+    s3conn = S3Connection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+    bucket = s3conn.create_bucket( configuration.get('AWS', 'BUCKET') )

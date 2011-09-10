@@ -30,7 +30,7 @@ else:
       if os.path.exists(details['filename']):
 	
 	details['tempfilename'] = str(time.time()) + "_" + os.path.basename(details['filename'])
-	keydetail = os.path.join(details['profile'], details['tempfilename'])
+	keydetail = os.path.join(details['profile'], "uncropped", details['tempfilename'])
 	
 	details['key'] = keydetail
 	details['originname'] = os.path.basename(details['filename'])

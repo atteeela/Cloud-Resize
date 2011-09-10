@@ -1,17 +1,38 @@
 #! /usr/bin/python
 
 
-import os,sys, base64, time, pickle
+import os,sys, base64, time, pickle, commands
 from bootstrap import Bootstrap
 from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
+from boto.sdb.connection import SDBConnection
 
-def doResize ( imagedetail, imagepath ):
-  print "Resizing"
+def doResize ( imagedetail, temppath, resizeprofile, resizebackend ):
+  if resizebackend == 'imagemagick':
+    source = os.path.join(temppath, imagedetail['tempfilename'])
+    dest = os.path.join(temppath, resizeprofile['type'], imagedetail['tempfilename'])
+    
+    print "Resizing", source, dest
+    
+    import PythonMagick
+    image = PythonMagick.Image(source)
+    sizes = PythonMagick._PythonMagick.Geometry( long(resizeprofile['width']), long(resizeprofile['height']) )
+    image.resize(sizes)
+    image.write(str(dest))
+    return dest
   
+def getResizeProfiles( domain, profile ):
+  results = domain.select('''select * from `%s` where profile = "%s"''' % ( configuration.get('AWS', 'DBDOMAIN') , profile ) )
+  profiles = []
+  for item in results:
+    profiles.append(item)
+  return profiles
 
 global configuration
 configuration = Bootstrap.bootstrap()
+
+sdbconn = SDBConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+domain = sdbconn.get_domain(configuration.get('AWS', 'DBDOMAIN'))
 
 if configuration:
   sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
@@ -26,6 +47,13 @@ if configuration:
   tempdir = "/tmp"
   try:
     tempdir = configuration.get('AWS', 'TEMPDIR')
+  except:
+    pass
+  
+  
+  resizebackend = "imagemagick"
+  try:
+    resizebackend = configuration.get('AWS', 'BACKEND')
   except:
     pass
   
@@ -49,30 +77,31 @@ if configuration:
 	# download from bucket
 	bucket = s3conn.get_bucket(bucketname)
 	key = bucket.get_key( imagedetail['key'] )
-	print "Downloading", imagedetail['key']
-	
-	key.get_contents_to_filename( os.path.join(tempdir,imagedetail['tempfilename'] ) )
-	
-	profiles = []
-	
-	for profile in profiles:
-	  resizedfile = doResize( imagedetail, os.path.join(tempdir,imagedetail['tempfilename'] ), profile )
-	
-	  # upload
-	  keydetail = ""
-	  newkey = bucket.new_key(keydetail)
-	  newkey.set_contents_from_file( resizedfile )
-	  newkey.close()
-	  close(resizedfile)
-	  unlink(resizedfile)
-	
-	# successfully proccessed, delete old
-	key.delete()
+	if key:
+	  print "Downloading", imagedetail['key']
+	  
+	  key.get_contents_to_filename( os.path.join(tempdir,imagedetail['tempfilename'] ) )
+	  
+	  resizeprofiles = getResizeProfiles( domain, imagedetail['profile'] )
+	  
+	  for resizeprofile in resizeprofiles:
+	    resizedfile = doResize( imagedetail, tempdir, resizeprofile, resizebackend )
+	  
+	    # upload
+	    keydetail = os.path.join( imagedetail['profile'],resizeprofile['type'], imagedetail['originname'] )
+	    newkey = bucket.new_key(keydetail)
+	    newkey.set_contents_from_filename( resizedfile )
+	    newkey.close()
+	    os.unlink(resizedfile)
+	  
+	  # successfully proccessed, delete old
+	  os.unlink( os.path.join(tempdir,imagedetail['tempfilename'] ) )
+	  
+	  #key.delete()
 	message.delete()
     except Exception as error:
       print "Error",error
       pass
-    break # for testing
     if not found:
       print "Waiting for messages in queue"
       time.sleep(60)
