@@ -6,6 +6,10 @@ from bootstrap import Bootstrap
 from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
 
+def doResize ( imagedetail, imagepath ):
+  print "Resizing"
+  
+
 global configuration
 configuration = Bootstrap.bootstrap()
 
@@ -29,7 +33,7 @@ if configuration:
     # wait for load to drop
     while os.getloadavg()[0] > maxload:
       print "Waiting for load avg to drop"
-      time.sleep(1)
+      time.sleep(10)
     
     found = False
     try:
@@ -49,14 +53,26 @@ if configuration:
 	
 	key.get_contents_to_filename( os.path.join(tempdir,imagedetail['tempfilename'] ) )
 	
-	# process
+	profiles = []
 	
-	# successfully proccessed, delete
+	for profile in profiles:
+	  resizedfile = doResize( imagedetail, os.path.join(tempdir,imagedetail['tempfilename'] ), profile )
+	
+	  # upload
+	  keydetail = ""
+	  newkey = bucket.new_key(keydetail)
+	  newkey.set_contents_from_file( resizedfile )
+	  newkey.close()
+	  close(resizedfile)
+	  unlink(resizedfile)
+	
+	# successfully proccessed, delete old
 	key.delete()
 	message.delete()
     except Exception as error:
       print "Error",error
       pass
+    break # for testing
     if not found:
-      print "Waiting for queue"
-      time.sleep(5)
+      print "Waiting for messages in queue"
+      time.sleep(60)
