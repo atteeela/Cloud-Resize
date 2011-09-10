@@ -65,6 +65,7 @@ if configuration:
     
     found = False
     try:
+      print "Checking queue"
       message = queue.read(60)
       if message:
 	found = True
@@ -84,16 +85,19 @@ if configuration:
 	  
 	  resizeprofiles = getResizeProfiles( domain, imagedetail['profile'] )
 	  
-	  for resizeprofile in resizeprofiles:
-	    resizedfile = doResize( imagedetail, tempdir, resizeprofile, resizebackend )
-	  
-	    # upload
-	    keydetail = os.path.join( imagedetail['profile'],resizeprofile['type'], imagedetail['originname'] )
-	    newkey = bucket.new_key(keydetail)
-	    newkey.set_contents_from_filename( resizedfile )
-	    newkey.close()
-	    os.unlink(resizedfile)
-	  
+	  if len(resizeprofiles) == 0:
+	    print "No matching size profiles found, discarding"
+	  else:
+	    for resizeprofile in resizeprofiles:
+	      resizedfile = doResize( imagedetail, tempdir, resizeprofile, resizebackend )
+	    
+	      # upload
+	      keydetail = os.path.join( imagedetail['profile'],resizeprofile['type'], imagedetail['originname'] )
+	      newkey = bucket.new_key(keydetail)
+	      newkey.set_contents_from_filename( resizedfile )
+	      newkey.close()
+	      os.unlink(resizedfile)
+	    
 	  # successfully proccessed, delete old
 	  os.unlink( os.path.join(tempdir,imagedetail['tempfilename'] ) )
 	  

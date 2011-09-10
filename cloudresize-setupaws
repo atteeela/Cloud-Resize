@@ -21,7 +21,6 @@ if configuration:
     print "Added profile"
   else:
     print "Creating entries"
-    sdbconn.delete_domain(configuration.get('AWS', 'DBDOMAIN'))
     sdbconn.create_domain(configuration.get('AWS', 'DBDOMAIN'))
     
     sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
