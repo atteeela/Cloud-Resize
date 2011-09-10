@@ -1,0 +1,16 @@
+#! /usr/bin/python
+
+import os,sys, base64
+from bootstrap import Bootstrap
+from boto.sqs.connection import SQSConnection
+from boto.s3.connection import S3Connection
+
+global configuration
+configuration = Bootstrap.bootstrap()
+
+if configuration:
+  sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+  sqsconn.create_queue(configuration.get('AWS', 'QUEUE'), 120)
+  
+  s3conn = S3Connection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+  bucket = s3conn.create_bucket( configuration.get('AWS', 'BUCKET') )

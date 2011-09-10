@@ -1,0 +1,49 @@
+#! /usr/bin/python
+
+import os,sys, base64
+from bootstrap import Bootstrap
+from boto.sqs.connection import SQSConnection
+from boto.s3.connection import S3Connection
+
+def printUsage ( ):
+  print "Usage:",sys.argv[0],"filepath","profile"
+  
+def parseArgs ( args ):
+  return { 'filename' : args[1], 'profile' : args[2] };
+
+if len(sys.argv) < 3:
+  printUsage()
+else:
+  global configuration
+  configuration = Bootstrap.bootstrap()
+  
+  if configuration:
+    details = parseArgs( sys.argv )
+    
+    # upload file to s3
+    s3conn = S3Connection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+    bucket = s3conn.get_bucket(configuration.get('AWS', 'BUCKET'))
+    if not bucket:
+      print "No bucket"
+    else:
+      
+      if os.path.exists(details['filename']):
+	
+	keydetail = os.path.join(details['profile'], os.path.basename(details['filename']))
+	
+	newkey = bucket.new_key(keydetail)
+	newkey.set_contents_from_file( open(details['filename']) )
+	newkey.close()
+	
+	# add process command to sqs queue
+	sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+	queue = sqsconn.get_queue(configuration.get('AWS', 'QUEUE'))
+	if queue:
+	  sqsconn.send_message( queue, base64.encodestring(keydetail + "||||" + details['profile']) )
+	  print "Added ",details['filename'],"to Queue with profile",details['profile']
+	  os.remove(details['filename'])
+	  print details['filename']," deleted"
+	else:
+	  print "Queue", configuration.get('AWS', 'QUEUE'),"does not exist"
+      else:
+	print "File", details['filename'],"doesn't exist"
