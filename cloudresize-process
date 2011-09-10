@@ -1,3 +1,47 @@
 #! /usr/bin/python
 
+
+import os,sys, base64, time, pickle
+from bootstrap import Bootstrap
 from boto.sqs.connection import SQSConnection
+from boto.s3.connection import S3Connection
+
+global configuration
+configuration = Bootstrap.bootstrap()
+
+if configuration:
+  sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+  queue = sqsconn.get_queue(configuration.get('AWS', 'QUEUE'))
+  maxload = 2
+  try:
+    maxload = configuration.get('AWS', 'MAXLOAD')
+  except:
+    pass
+  
+  while True:
+    # wait for load to drop
+    while os.getloadavg()[0] > maxload:
+      print "Waiting for load avg to drop"
+      time.sleep(1)
+    
+    found = False
+    try:
+      message = queue.read(60)
+      if message:
+	found = True
+	messagedetail = message.get_body()
+	imagedetail = pickle.loads(messagedetail)
+	print imagedetail
+	
+	sys.exit(0)
+	# successfully proccessed, delete
+	message.delete()
+    except Exception as error:
+      print error
+      pass
+    if not found:
+      print "Waiting for queue"
+      time.sleep(5)
+    
+  #s3conn = S3Connection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+  #bucket = s3conn.get_bucket( configuration.get('AWS', 'BUCKET') )
