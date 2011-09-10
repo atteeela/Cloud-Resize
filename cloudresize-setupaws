@@ -10,6 +10,8 @@ configuration = Bootstrap.bootstrap()
 
 if configuration:
   sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+  #queue = sqsconn.get_queue(configuration.get('AWS', 'QUEUE'))
+  #queue.delete()
   sqsconn.create_queue(configuration.get('AWS', 'QUEUE'), 120)
   
   s3conn = S3Connection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))

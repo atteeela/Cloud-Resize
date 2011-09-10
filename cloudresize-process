@@ -11,10 +11,17 @@ configuration = Bootstrap.bootstrap()
 
 if configuration:
   sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+  s3conn = S3Connection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
   queue = sqsconn.get_queue(configuration.get('AWS', 'QUEUE'))
   maxload = 2
   try:
     maxload = configuration.get('AWS', 'MAXLOAD')
+  except:
+    pass
+  
+  tempdir = "/tmp"
+  try:
+    tempdir = configuration.get('AWS', 'TEMPDIR')
   except:
     pass
   
@@ -31,17 +38,25 @@ if configuration:
 	found = True
 	messagedetail = message.get_body()
 	imagedetail = pickle.loads(messagedetail)
-	print imagedetail
+	bucketname = configuration.get('AWS', 'BUCKET')
+	if 'bucket' in imagedetail:
+	  bucketname = imagedetail['bucket']
 	
-	sys.exit(0)
+	# download from bucket
+	bucket = s3conn.get_bucket(bucketname)
+	key = bucket.get_key( imagedetail['key'] )
+	print "Downloading", imagedetail['key']
+	
+	key.get_contents_to_filename( os.path.join(tempdir,imagedetail['tempfilename'] ) )
+	
+	# process
+	
 	# successfully proccessed, delete
+	key.delete()
 	message.delete()
     except Exception as error:
-      print error
+      print "Error",error
       pass
     if not found:
       print "Waiting for queue"
       time.sleep(5)
-    
-  #s3conn = S3Connection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
-  #bucket = s3conn.get_bucket( configuration.get('AWS', 'BUCKET') )

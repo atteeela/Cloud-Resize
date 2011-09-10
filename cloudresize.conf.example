@@ -3,3 +3,5 @@ AWSID = 11111111111111
 SECRETKEY = DJODJIJDSIDJS
 QUEUE = ResizeQueue
 BUCKET = somebucket
+TEMPDIR = /tmp/resizing
+MAXLOAD = 2

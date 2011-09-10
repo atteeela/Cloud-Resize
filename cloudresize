@@ -29,10 +29,12 @@ else:
       
       if os.path.exists(details['filename']):
 	
-	keydetail = os.path.join(details['profile'], str(time.time()) + "_" + os.path.basename(details['filename']))
+	details['tempfilename'] = str(time.time()) + "_" + os.path.basename(details['filename'])
+	keydetail = os.path.join(details['profile'], details['tempfilename'])
 	
 	details['key'] = keydetail
 	details['originname'] = os.path.basename(details['filename'])
+	details['bucket'] = configuration.get('AWS', 'BUCKET')
 	
 	newkey = bucket.new_key(keydetail)
 	newkey.set_contents_from_file( open(details['filename']) )
