@@ -6,10 +6,13 @@ from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
 
 def printUsage ( ):
-  print "Usage:",sys.argv[0],"filepath","profile","delete"
+  print "Usage:",sys.argv[0],"filepath","profile","delete","[localpathdest]"
   
 def parseArgs ( args ):
-  return { 'filename' : args[1], 'profile' : args[2], 'delete' : args[3] };
+  details = { 'filename' : args[1], 'profile' : args[2], 'delete' : args[3] };
+  if len(args) > 4:
+    details['localpathdest'] = args[4]
+  return details
 
 if len(sys.argv) < 4:
   printUsage()

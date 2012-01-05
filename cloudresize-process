@@ -102,11 +102,18 @@ if configuration:
 		  resizedfile = doResize( imagedetail, tempdir, resizeprofile, resizebackend )
 		
 		  # upload
-		  keydetail = os.path.join( imagedetail['profile'],resizeprofile['type'], imagedetail['originname'] )
-		  newkey = bucket.new_key(keydetail)
-		  newkey.set_contents_from_filename( resizedfile )
-		  newkey.close()
-		  os.unlink(resizedfile)
+		  if 'localpathdest' in imagedetail:
+		    print "Moving",resizedfile, os.path.join(imagedetail['localpathdest'],resizeprofile['type'],imagedetail['originname'])
+		    
+		    if not os.path.exists(os.path.join(imagedetail['localpathdest'],resizeprofile['type'])):
+		      os.makedirs(os.path.join(imagedetail['localpathdest'],resizeprofile['type']))
+		    os.rename(resizedfile, os.path.join(imagedetail['localpathdest'],resizeprofile['type'],imagedetail['originname']))
+		  else:
+		    keydetail = os.path.join( imagedetail['profile'],resizeprofile['type'], imagedetail['originname'] )
+		    newkey = bucket.new_key(keydetail)
+		    newkey.set_contents_from_filename( resizedfile )
+		    newkey.close()
+		    os.unlink(resizedfile)
 	  
 	      # successfully proccessed, delete old
 	      os.unlink( os.path.join(tempdir,imagedetail['tempfilename'] ) )
