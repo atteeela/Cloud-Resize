@@ -10,7 +10,9 @@ from boto.sdb.connection import SDBConnection
 def doResize ( imagedetail, temppath, resizeprofile, resizebackend ):
   if resizebackend == 'imagemagick':
     source = os.path.join(temppath, imagedetail['tempfilename'])
-    dest = os.path.join(temppath, resizeprofile['type'], imagedetail['tempfilename'])
+    dest = os.path.join(temppath, resizeprofile['type'], imagedetail['originname'])
+    if not os.path.exists(os.path.join(temppath, resizeprofile['type'])):
+      os.makedirs(os.path.join(temppath, resizeprofile['type']))
     
     print "Resizing", source, dest
     
@@ -44,7 +46,7 @@ if configuration:
   except:
     pass
   
-  tempdir = "/tmp"
+  tempdir = "/tmp/cloudresize"
   try:
     tempdir = configuration.get('AWS', 'TEMPDIR')
   except:
@@ -72,36 +74,44 @@ if configuration:
 	messagedetail = message.get_body()
 	imagedetail = pickle.loads(messagedetail)
 	bucketname = configuration.get('AWS', 'BUCKET')
+	bucket = s3conn.get_bucket(bucketname)
+	key = None
 	if 'bucket' in imagedetail:
 	  bucketname = imagedetail['bucket']
 	
-	# download from bucket
-	bucket = s3conn.get_bucket(bucketname)
-	key = bucket.get_key( imagedetail['key'] )
-	if key:
-	  print "Downloading", imagedetail['key']
+	if imagedetail['key'].find('http://') != -1 and imagedetail['key'].find('http://') != -1:
+	      # download via http
+	      import urllib2
+	      image = urllib2.urlopen(imagedetail['key'])
+	      output = open(os.path.join(tempdir,imagedetail['tempfilename']),'wb')
+	      output.write(image.read())
+	      output.close()
+	else:
+	      # download from bucket
+	      key = bucket.get_key( imagedetail['key'] )
+	      if key:
+		print "Downloading", imagedetail['key']
+		key.get_contents_to_filename( os.path.join(tempdir,imagedetail['tempfilename'] ) )
+	if os.path.exists( os.path.join(tempdir,imagedetail['tempfilename']) ):
+	      resizeprofiles = getResizeProfiles( domain, imagedetail['profile'] )
+	
+	      if len(resizeprofiles) == 0:
+		print "No matching size profiles found, discarding"
+	      else:
+		for resizeprofile in resizeprofiles:
+		  resizedfile = doResize( imagedetail, tempdir, resizeprofile, resizebackend )
+		
+		  # upload
+		  keydetail = os.path.join( imagedetail['profile'],resizeprofile['type'], imagedetail['originname'] )
+		  newkey = bucket.new_key(keydetail)
+		  newkey.set_contents_from_filename( resizedfile )
+		  newkey.close()
+		  os.unlink(resizedfile)
 	  
-	  key.get_contents_to_filename( os.path.join(tempdir,imagedetail['tempfilename'] ) )
-	  
-	  resizeprofiles = getResizeProfiles( domain, imagedetail['profile'] )
-	  
-	  if len(resizeprofiles) == 0:
-	    print "No matching size profiles found, discarding"
-	  else:
-	    for resizeprofile in resizeprofiles:
-	      resizedfile = doResize( imagedetail, tempdir, resizeprofile, resizebackend )
-	    
-	      # upload
-	      keydetail = os.path.join( imagedetail['profile'],resizeprofile['type'], imagedetail['originname'] )
-	      newkey = bucket.new_key(keydetail)
-	      newkey.set_contents_from_filename( resizedfile )
-	      newkey.close()
-	      os.unlink(resizedfile)
-	    
-	  # successfully proccessed, delete old
-	  os.unlink( os.path.join(tempdir,imagedetail['tempfilename'] ) )
-	  
-	  #key.delete()
+	      # successfully proccessed, delete old
+	      os.unlink( os.path.join(tempdir,imagedetail['tempfilename'] ) )
+	      if key:
+		key.delete()
 	message.delete()
     except Exception as error:
       print "Error",error

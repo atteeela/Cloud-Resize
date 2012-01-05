@@ -6,12 +6,12 @@ from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
 
 def printUsage ( ):
-  print "Usage:",sys.argv[0],"filepath","profile"
+  print "Usage:",sys.argv[0],"filepath","profile","delete"
   
 def parseArgs ( args ):
-  return { 'filename' : args[1], 'profile' : args[2] };
+  return { 'filename' : args[1], 'profile' : args[2], 'delete' : args[3] };
 
-if len(sys.argv) < 3:
+if len(sys.argv) < 4:
   printUsage()
 else:
   global configuration
@@ -27,19 +27,26 @@ else:
       print "No bucket"
     else:
       
-      if os.path.exists(details['filename']):
+      if os.path.exists(details['filename']) or details['filename'].find('http://') != -1 or details['filename'].find('https://') != -1:
 	
-	details['tempfilename'] = str(time.time()) + "_" + os.path.basename(details['filename'])
-	keydetail = os.path.join(details['profile'], "uncropped", details['tempfilename'])
+	if details['filename'].find('http://') == -1 and details['filename'].find('https://') == -1:
+		details['tempfilename'] = str(time.time()) + "_" + os.path.basename(details['filename'])
+		keydetail = os.path.join(details['profile'], "uncropped", details['tempfilename'])
 	
-	details['key'] = keydetail
-	details['originname'] = os.path.basename(details['filename'])
-	details['bucket'] = configuration.get('AWS', 'BUCKET')
+		details['key'] = keydetail
+		details['originname'] = os.path.basename(details['filename'])
+		details['bucket'] = configuration.get('AWS', 'BUCKET')
 	
-	newkey = bucket.new_key(keydetail)
-	newkey.set_contents_from_file( open(details['filename']) )
-	newkey.close()
-	
+		newkey = bucket.new_key(keydetail)
+		newkey.set_contents_from_file( open(details['filename']) )
+		newkey.close()
+	else:
+		import urlparse
+		details['key'] = details['filename']
+		urlparsed = urlparse.urlparse(details['key'])
+		details['originname'] = os.path.basename(urlparsed.path)
+		details['tempfilename'] = str(time.time()) + "_" + os.path.basename(details['originname'])
+
 	# add process command to sqs queue
 	sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
 	queue = sqsconn.get_queue(configuration.get('AWS', 'QUEUE'))
@@ -47,8 +54,9 @@ else:
 	  encodeddata = base64.encodestring( pickle.dumps(details) )
 	  result = sqsconn.send_message( queue, encodeddata )
 	  print "Added ",details['filename'],"to Queue with profile",details['profile']
-	  os.remove(details['filename'])
-	  print details['filename']," deleted"
+	  if details['delete'] == "1":
+		  os.remove(details['filename'])
+		  print details['filename']," deleted"
 	else:
 	  print "Queue", configuration.get('AWS', 'QUEUE'),"does not exist"
       else:
