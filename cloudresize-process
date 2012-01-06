@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 
-import os,sys, base64, time, pickle, commands
+import os,sys, base64, time, pickle, subprocess
 from bootstrap import Bootstrap
 from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
@@ -22,7 +22,7 @@ def doResize ( imagedetail, temppath, resizeprofile, resizebackend, destpath ):
     image.write(str(dest))
     return dest
   if resizebackend == 'cli':
-    print commands.getstatusoutput('convert ' + source + ' -resize  ' + str(long(resizeprofile['width'])) + 'x' + str(long(resizeprofile['height'])) + ' ' + dest )
+    print subprocess.call(['convert',source,'-resize',str(long(resizeprofile['width'])) + 'x' + str(long(resizeprofile['height'])),dest])
     return dest
   
 def getResizeProfiles( domain, profile ):
