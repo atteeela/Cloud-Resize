@@ -1,0 +1,37 @@
+#! /usr/bin/python
+
+
+import os,sys, base64, time, pickle, commands
+from bootstrap import Bootstrap
+from boto.sqs.connection import SQSConnection
+from boto.s3.connection import S3Connection
+from boto.sdb.connection import SDBConnection
+
+def getResizeProfiles( domain):
+  results = domain.select('''select * from `%s` ''' % ( configuration.get('AWS', 'DBDOMAIN') ) )
+  for item in results:
+    print item
+
+global configuration
+configuration = Bootstrap.bootstrap()
+
+sdbconn = SDBConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+domain = sdbconn.get_domain(configuration.get('AWS', 'DBDOMAIN'))
+
+if configuration:
+  sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+  s3conn = S3Connection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+  queue = sqsconn.get_queue(configuration.get('AWS', 'QUEUE'))
+  maxload = 2
+  try:
+    maxload = configuration.get('AWS', 'MAXLOAD')
+  except:
+    pass
+  
+  tempdir = "/tmp/cloudresize"
+  try:
+    tempdir = configuration.get('AWS', 'TEMPDIR')
+  except:
+    pass
+ 
+getResizeProfiles(domain) 
