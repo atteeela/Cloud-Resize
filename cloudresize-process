@@ -8,19 +8,21 @@ from boto.s3.connection import S3Connection
 from boto.sdb.connection import SDBConnection
 
 def doResize ( imagedetail, temppath, resizeprofile, resizebackend ):
+  source = os.path.join(temppath, imagedetail['tempfilename'])
+  dest = os.path.join(temppath, resizeprofile['type'], imagedetail['originname'])
+  if not os.path.exists(os.path.join(temppath, resizeprofile['type'])):
+    os.makedirs(os.path.join(temppath, resizeprofile['type']))
+    
+  print "Resizing", source, dest
   if resizebackend == 'imagemagick':
-    source = os.path.join(temppath, imagedetail['tempfilename'])
-    dest = os.path.join(temppath, resizeprofile['type'], imagedetail['originname'])
-    if not os.path.exists(os.path.join(temppath, resizeprofile['type'])):
-      os.makedirs(os.path.join(temppath, resizeprofile['type']))
-    
-    print "Resizing", source, dest
-    
     import PythonMagick
     image = PythonMagick.Image(source)
     sizes = PythonMagick._PythonMagick.Geometry( long(resizeprofile['width']), long(resizeprofile['height']) )
     image.resize(sizes)
     image.write(str(dest))
+    return dest
+  if resizebackend == 'cli':
+    print commands.getstatusoutput('convert ' + source + ' -resize  ' + str(long(resizeprofile['width'])) + 'x' + str(long(resizeprofile['height'])) + ' ' + dest )
     return dest
   
 def getResizeProfiles( domain, profile ):
@@ -78,7 +80,6 @@ if configuration:
 	key = None
 	if 'bucket' in imagedetail:
 	  bucketname = imagedetail['bucket']
-	
 	if imagedetail['key'].find('http://') != -1 and imagedetail['key'].find('http://') != -1:
 	      # download via http
 	      import urllib2

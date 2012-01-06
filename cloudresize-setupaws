@@ -13,7 +13,7 @@ if configuration:
 
   sdbconn = SDBConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
   if len(sys.argv) > 1 and sys.argv[1] == "AddProfile":
-    result = sdbconn.put_attributes(configuration.get('AWS', 'DBDOMAIN'), uuid.uuid1(), {'width' : sys.argv[3], 
+    result = sdbconn.put_attributes(configuration.get('AWS', 'DBDOMAIN'), sys.argv[2]+'-'+sys.argv[5], {'width' : sys.argv[3], 
 									       'height' : sys.argv[4], 
 									       'aspect' : True,
 									       'profile' : sys.argv[2],
