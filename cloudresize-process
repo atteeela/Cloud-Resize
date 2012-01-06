@@ -7,9 +7,9 @@ from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
 from boto.sdb.connection import SDBConnection
 
-def doResize ( imagedetail, temppath, resizeprofile, resizebackend ):
+def doResize ( imagedetail, temppath, resizeprofile, resizebackend, destpath ):
   source = os.path.join(temppath, imagedetail['tempfilename'])
-  dest = os.path.join(temppath, resizeprofile['type'], imagedetail['originname'])
+  dest = os.path.join(destpath, resizeprofile['type'], imagedetail['originname'])
   if not os.path.exists(os.path.join(temppath, resizeprofile['type'])):
     os.makedirs(os.path.join(temppath, resizeprofile['type']))
     
@@ -91,7 +91,7 @@ if configuration:
 	      # download from bucket
 	      key = bucket.get_key( imagedetail['key'] )
 	      if key:
-		print "Downloading", imagedetail['key']
+		print "Downloading", imagedetail['key']," to ",os.path.join(tempdir,imagedetail['tempfilename'] )
 		key.get_contents_to_filename( os.path.join(tempdir,imagedetail['tempfilename'] ) )
 	if os.path.exists( os.path.join(tempdir,imagedetail['tempfilename']) ):
 	      resizeprofiles = getResizeProfiles( domain, imagedetail['profile'] )
@@ -100,16 +100,15 @@ if configuration:
 		print "No matching size profiles found, discarding"
 	      else:
 		for resizeprofile in resizeprofiles:
-		  resizedfile = doResize( imagedetail, tempdir, resizeprofile, resizebackend )
+                  destdir = tempdir
+		  if 'localpathdest' in imagedetail:
+			destdir = imagedetail['localpathdest']
+		        if not os.path.exists(os.path.join(imagedetail['localpathdest'],resizeprofile['type'])):
+			   os.makedirs(os.path.join(imagedetail['localpathdest'],resizeprofile['type']))
+		  resizedfile = doResize( imagedetail, tempdir, resizeprofile, resizebackend, destdir )
 		
 		  # upload
-		  if 'localpathdest' in imagedetail:
-		    print "Moving",resizedfile, os.path.join(imagedetail['localpathdest'],resizeprofile['type'],imagedetail['originname'])
-		    
-		    if not os.path.exists(os.path.join(imagedetail['localpathdest'],resizeprofile['type'])):
-		      os.makedirs(os.path.join(imagedetail['localpathdest'],resizeprofile['type']))
-		    os.rename(resizedfile, os.path.join(imagedetail['localpathdest'],resizeprofile['type'],imagedetail['originname']))
-		  else:
+		  if 'localpathdest' not in imagedetail:
 		    keydetail = os.path.join( imagedetail['profile'],resizeprofile['type'], imagedetail['originname'] )
 		    newkey = bucket.new_key(keydetail)
 		    newkey.set_contents_from_filename( resizedfile )
