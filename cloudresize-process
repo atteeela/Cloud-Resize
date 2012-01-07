@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 
-import os,sys, base64, time, pickle, subprocess
+import os,sys, base64, time, pickle, subprocess, math
 from bootstrap import Bootstrap
 from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
@@ -63,7 +63,7 @@ if configuration:
   
   while True:
     # wait for load to drop
-    while os.getloadavg()[0] > maxload:
+    while int(math.floor(os.getloadavg()[0])) >= int(maxload):
       print "Waiting for load avg to drop"
       time.sleep(10)
     
