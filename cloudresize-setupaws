@@ -5,13 +5,15 @@ from bootstrap import Bootstrap
 from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
 from boto.sdb.connection import SDBConnection
+from boto.sdb import SDBRegionInfo
+from boto.sqs import SQSRegionInfo
 
 global configuration
 configuration = Bootstrap.bootstrap()
 
 if configuration:
-
-  sdbconn = SDBConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+  regiondata = SDBRegionInfo(name=configuration.get('AWS', 'REGION'), endpoint=configuration.get('AWS', 'SDB_ENDPOINT'))
+  sdbconn = SDBConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'),region = regiondata)
   if len(sys.argv) > 1 and sys.argv[1] == "AddProfile":
     result = sdbconn.put_attributes(configuration.get('AWS', 'DBDOMAIN'), sys.argv[2]+'-'+sys.argv[5], {'width' : sys.argv[3], 
 									       'height' : sys.argv[4], 
@@ -19,11 +21,18 @@ if configuration:
 									       'profile' : sys.argv[2],
 									       'type' : sys.argv[5]})
     print "Added profile"
+  elif len(sys.argv) > 1 and sys.argv[1] == "DeleteProfile" :
+    result = sdbconn.delete_attributes(configuration.get('AWS', 'DBDOMAIN'), sys.argv[2])
+    if result:
+	    print "Deleted profile"
+    else:
+	    print "Failed to delete",result
   else:
     print "Creating entries"
     sdbconn.create_domain(configuration.get('AWS', 'DBDOMAIN'))
-    
-    sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+   
+    sqsregiondata = SQSRegionInfo(name=configuration.get('AWS', 'REGION'), endpoint=configuration.get('AWS', 'SQS_ENDPOINT')) 
+    sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'),region=sqsregiondata)
     #queue = sqsconn.get_queue(configuration.get('AWS', 'QUEUE'))
     #queue.delete()
     sqsconn.create_queue(configuration.get('AWS', 'QUEUE'), 120)

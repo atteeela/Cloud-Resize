@@ -6,6 +6,8 @@ from bootstrap import Bootstrap
 from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
 from boto.sdb.connection import SDBConnection
+from boto.sdb import SDBRegionInfo
+from boto.sqs import SQSRegionInfo
 
 def doResize ( imagedetail, temppath, resizeprofile, resizebackend, destpath ):
   source = os.path.join(temppath, imagedetail['tempfilename'])
@@ -34,12 +36,13 @@ def getResizeProfiles( domain, profile ):
 
 global configuration
 configuration = Bootstrap.bootstrap()
-
-sdbconn = SDBConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+regiondata = SDBRegionInfo(name=configuration.get('AWS', 'REGION'), endpoint=configuration.get('AWS', 'SDB_ENDPOINT'))
+sdbconn = SDBConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'),region=regiondata)
 domain = sdbconn.get_domain(configuration.get('AWS', 'DBDOMAIN'))
 
 if configuration:
-  sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+  sqsregiondata = SQSRegionInfo(name=configuration.get('AWS', 'REGION'), endpoint=configuration.get('AWS', 'SQS_ENDPOINT'))
+  sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'),region=sqsregiondata)
   s3conn = S3Connection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
   queue = sqsconn.get_queue(configuration.get('AWS', 'QUEUE'))
   maxload = 2

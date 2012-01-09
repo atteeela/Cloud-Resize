@@ -6,3 +6,6 @@ DBDOMAIN = Resize
 BUCKET = somebucket
 TEMPDIR = /tmp/resizing
 MAXLOAD = 2
+REGION = eu-west-1
+SDB_ENDPOINT = sdb.eu-west-1.amazonaws.com
+SQS_ENDPOINT = sqs.eu-west-1.amazonaws.com

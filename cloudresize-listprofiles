@@ -6,16 +6,18 @@ from bootstrap import Bootstrap
 from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
 from boto.sdb.connection import SDBConnection
+from boto.sdb import SDBRegionInfo
 
 def getResizeProfiles( domain):
   results = domain.select('''select * from `%s` ''' % ( configuration.get('AWS', 'DBDOMAIN') ) )
   for item in results:
-    print item
+    print item.name, item
 
 global configuration
 configuration = Bootstrap.bootstrap()
 
-sdbconn = SDBConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+regiondata = SDBRegionInfo(name=configuration.get('AWS', 'REGION'), endpoint=configuration.get('AWS', 'SDB_ENDPOINT'))
+sdbconn = SDBConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'),region = regiondata)
 domain = sdbconn.get_domain(configuration.get('AWS', 'DBDOMAIN'))
 
 if configuration:

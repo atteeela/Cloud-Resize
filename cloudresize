@@ -4,6 +4,8 @@ import os,sys, base64, time, pickle
 from bootstrap import Bootstrap
 from boto.sqs.connection import SQSConnection
 from boto.s3.connection import S3Connection
+from boto.sdb import SDBRegionInfo
+from boto.sqs import SQSRegionInfo
 
 def printUsage ( ):
   print "Usage:",sys.argv[0],"filepath","profile","delete","[localpathdest]"
@@ -51,7 +53,8 @@ else:
 		details['tempfilename'] = str(time.time()) + "_" + os.path.basename(details['originname'])
 
 	# add process command to sqs queue
-	sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'))
+	sqsregiondata = SQSRegionInfo(name=configuration.get('AWS', 'REGION'), endpoint=configuration.get('AWS', 'SQS_ENDPOINT'))
+	sqsconn = SQSConnection(configuration.get('AWS', 'AWSID'), configuration.get('AWS', 'SECRETKEY'),region=sqsregiondata)
 	queue = sqsconn.get_queue(configuration.get('AWS', 'QUEUE'))
 	if queue:
 	  encodeddata = base64.encodestring( pickle.dumps(details) )
